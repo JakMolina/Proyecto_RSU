@@ -29,7 +29,21 @@ export function supabaseService(): SupabaseClient {
   return createSupabaseClient(
     URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY as string,
-    { auth: { persistSession: false } }
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+      global: {
+        fetch: (input, init = {}) => {
+          return fetch(input, {
+            ...init,
+            cache: "no-store",
+          });
+        },
+      },
+    }
   );
 }
 
