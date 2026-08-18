@@ -19,12 +19,17 @@ export default function AdminReportesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  function recargarSesiones() {
+    setRefreshKey(k => k + 1);
+  }
 
   useEffect(() => {
-    fetch("/api/sesiones", { cache: "no-store" })
+    fetch(`/api/sesiones?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setSesiones(d.sesiones ?? []));
-  }, []);
+  }, [refreshKey]);
 
   async function consultar() {
     setLoading(true);
@@ -56,7 +61,17 @@ export default function AdminReportesPage() {
 
       <div className="card grid gap-3 p-4 sm:grid-cols-3">
         <div className="sm:col-span-1">
-          <label className="mb-1 block text-sm font-medium">Sesión</label>
+          <div className="flex items-end justify-between gap-2 mb-1">
+            <label className="mb-0 block text-sm font-medium">Sesión</label>
+            <button
+              type="button"
+              onClick={recargarSesiones}
+              className="btn-ghost text-xs whitespace-nowrap"
+              title="Forzar recarga de sesiones desde el servidor"
+            >
+              ⟳ Recargar
+            </button>
+          </div>
           <select className="input" value={sesionId} onChange={(e) => setSesionId(e.target.value)}>
             <option value="">Todas las sesiones</option>
             {sesiones.map((s) => (

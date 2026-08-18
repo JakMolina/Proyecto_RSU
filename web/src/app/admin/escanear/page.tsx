@@ -20,8 +20,15 @@ export default function EscanearPage() {
 
   useEffect(() => { sesionRef.current = sesionId; }, [sesionId]);
 
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  function recargarSesiones() {
+    setRefreshKey(k => k + 1);
+  }
+
   useEffect(() => {
-    fetch("/api/sesiones", { cache: "no-store" })
+    // Cache buster: ?t=<timestamp> fuerza petición fresca en cada render y al pulsar "Recargar"
+    fetch(`/api/sesiones?t=${Date.now()}`, { cache: "no-store" })
       .then(async (r) => {
         const d = await r.json();
         if (!r.ok) {
@@ -33,7 +40,7 @@ export default function EscanearPage() {
         else setEstado({ tipo: "error", msg: "Aún no hay sesiones creadas. Crea las sesiones del programa en Sesiones." });
       })
       .catch((e) => setEstado({ tipo: "error", msg: "Error de red al cargar sesiones: " + (e?.message ?? "") }));
-  }, []);
+  }, [refreshKey]);
 
   function detener() {
     if (scannRef.current) {
@@ -119,7 +126,17 @@ export default function EscanearPage() {
       </div>
 
       <div className="mx-auto max-w-md">
-        <label className="mb-1 block text-sm font-medium">Sesión</label>
+        <div className="flex items-end justify-between gap-2 mb-1">
+          <label className="mb-0 block text-sm font-medium">Sesión</label>
+          <button
+            type="button"
+            onClick={recargarSesiones}
+            className="btn-ghost text-xs whitespace-nowrap"
+            title="Forzar recarga de sesiones desde el servidor"
+          >
+            ⟳ Recargar
+          </button>
+        </div>
         <select className="input mb-4" value={sesionId} onChange={(e) => setSesionId(e.target.value)}>
           {sesiones.map((s) => (
             <option key={s.id} value={s.id}>
