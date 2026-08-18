@@ -5,13 +5,20 @@ import { getSession, getDocente } from "@/lib/auth";
 
 interface Params { params: { id: string } }
 
+function noStore(res: NextResponse) {
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.headers.set("Pragma", "no-cache");
+  res.headers.set("Expires", "0");
+  return res;
+}
+
 /** Descarga de material: accesible para un docente autenticado o un admin.
  *  Lee desde el bucket PRIVADO "materiales" usando service_role (que salta
  *  RLS), sin exponer nunca el archivo públicamente. */
 export async function GET(_req: Request, { params }: Params) {
   const [admin, docente] = await Promise.all([getSession(), getDocente()]);
   if (!admin && !docente) {
-    return NextResponse.json({ error: "Acceso restringido. Inicia sesión." }, { status: 401 });
+    return noStore(NextResponse.json({ error: "Acceso restringido. Inicia sesión." }, { status: 401 }));
   }
 
   const sb = supabaseService();
@@ -20,17 +27,17 @@ export async function GET(_req: Request, { params }: Params) {
     .eq("id", params.id)
     .maybeSingle() as any;
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!mat) return NextResponse.json({ error: "Material no encontrado" }, { status: 404 });
+  if (error) return noStore(NextResponse.json({ error: error.message }, { status: 500 }));
+  if (!mat) return noStore(NextResponse.json({ error: "Material no encontrado" }, { status: 404 }));
 
   // Si el taller está desactivado, los docentes no pueden descargar; admin sí.
   if (!mat.talleres?.activo && !admin) {
-    return NextResponse.json({ error: "Material no disponible" }, { status: 403 });
+    return noStore(NextResponse.json({ error: "Material no disponible" }, { status: 403 }));
   }
 
   const { data, error: dlErr } = await sb.storage.from("materiales").download(mat.storage_path);
   if (dlErr || !data) {
-    return NextResponse.json({ error: "No se pudo recuperar el archivo" }, { status: 500 });
+    return noStore(NextResponse.json({ error: "No se pudo recuperar el archivo" }, { status: 500 }));
   }
 
   const ab = await (data as Blob).arrayBuffer();

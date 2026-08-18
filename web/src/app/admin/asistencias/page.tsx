@@ -21,7 +21,7 @@ export default function AdminReportesPage() {
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    fetch("/api/sesiones")
+    fetch("/api/sesiones", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setSesiones(d.sesiones ?? []));
   }, []);
@@ -31,7 +31,7 @@ export default function AdminReportesPage() {
     setErr("");
     const qs = new URLSearchParams();
     if (sesionId) qs.set("sesion_id", sesionId);
-    const r = await fetch(`/api/admin/reportes?${qs.toString()}`);
+    const r = await fetch(`/api/admin/reportes?${qs.toString()}`, { cache: "no-store" });
     const d = await r.json();
     if (r.ok) setRows(d.rows ?? []);
     else setErr(d.error ?? "Error");

@@ -4,11 +4,18 @@ import { supabaseService } from "@/lib/supabase";
 import { enviarWhatsappDocumento, normalizarNumero } from "@/lib/whatsapp";
 import { getSession } from "@/lib/auth";
 
+function noStore(res: NextResponse) {
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.headers.set("Pragma", "no-cache");
+  res.headers.set("Expires", "0");
+  return res;
+}
+
 export async function POST(req: Request) {
-  if (!await getSession()) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!await getSession()) return noStore(NextResponse.json({ error: "No autorizado" }, { status: 401 }));
   const sb = supabaseService();
   const body = await req.json().catch(() => null);
-  if (!body) return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+  if (!body) return noStore(NextResponse.json({ error: "JSON inválido" }, { status: 400 }));
 
   const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
@@ -32,7 +39,7 @@ export async function POST(req: Request) {
       .eq("id", id)
       .maybeSingle() as any;
     if (!cert || !cert.storage_path) {
-      return NextResponse.json({ error: "sin certificado" }, { status: 422 });
+      return noStore(NextResponse.json({ error: "sin certificado" }, { status: 422 }));
     }
     const to = normalizarNumero(cert.participantes.whatsapp);
     if (SHOULD_SKIP_WA) {
@@ -41,7 +48,7 @@ export async function POST(req: Request) {
         certificado_id: cert.id, estado: "FALLIDO", intentos: 1,
         respuesta_api: motivo, enviado_en: null,
       });
-      return NextResponse.json({ ok: false, enviados: 0, fallidos: 1, omitidos: 0, detalles: [{ id, ok: false, error: motivo }] });
+      return noStore(NextResponse.json({ ok: false, enviados: 0, fallidos: 1, omitidos: 0, detalles: [{ id, ok: false, error: motivo }] }));
     }
 
     const resultados = [];
@@ -73,12 +80,12 @@ export async function POST(req: Request) {
     }
 
     const okCount = resultados.filter(r => r.ok).length;
-    return NextResponse.json({ ok: okCount > 0, enviados: okCount, fallidos: resultados.length - okCount, omitidos: 0, detalles: resultados });
+    return noStore(NextResponse.json({ ok: okCount > 0, enviados: okCount, fallidos: resultados.length - okCount, omitidos: 0, detalles: resultados }));
   }
 
   // ---- Envío MASIVO ----
   if (!body.todos) {
-    return NextResponse.json({ error: "certificado_id o todos=true requerido" }, { status: 422 });
+    return noStore(NextResponse.json({ error: "certificado_id o todos=true requerido" }, { status: 422 }));
   }
 
   // Certificados con PDF disponible + participante con WhatsApp
@@ -159,7 +166,7 @@ export async function POST(req: Request) {
 
   const env = detalles.filter((d) => d.ok).length;
   const fail = detalles.filter((d) => !d.ok).length;
-  return NextResponse.json({
+  return noStore(NextResponse.json({
     ok: true,
     total,
     enviados: env,
@@ -167,5 +174,5 @@ export async function POST(req: Request) {
     omitidos: omitidos.length,
     detalle_omitidos: omitidos,
     detalle_envios: detalles,
-  });
+  }));
 }

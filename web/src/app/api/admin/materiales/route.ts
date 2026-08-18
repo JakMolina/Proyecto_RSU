@@ -3,6 +3,13 @@ import { NextResponse } from "next/server";
 import { supabaseService } from "@/lib/supabase";
 import { getSession } from "@/lib/auth";
 
+function noStore(res: NextResponse) {
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.headers.set("Pragma", "no-cache");
+  res.headers.set("Expires", "0");
+  return res;
+}
+
 // Tamaño máximo: 20 MB
 const MAX_BYTES = 20 * 1024 * 1024;
 
@@ -32,13 +39,13 @@ function sanitizeFilename(name: string): string {
 
 /** Subida de material (multipart/form-data). Solo admin. */
 export async function POST(req: Request) {
-  if (!(await getSession())) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!(await getSession())) return noStore(NextResponse.json({ error: "No autorizado" }, { status: 401 }));
 
   let form: FormData;
   try {
     form = await req.formData();
   } catch {
-    return NextResponse.json({ error: "Se esperaba multipart/form-data" }, { status: 400 });
+    return noStore(NextResponse.json({ error: "Se esperaba multipart/form-data" }, { status: 400 }));
   }
 
   const taller_id = String(form.get("taller_id") ?? "").trim();
@@ -46,23 +53,23 @@ export async function POST(req: Request) {
   const descripcionField = String(form.get("descripcion") ?? "").trim();
   const file = form.get("file") as File | null;
 
-  if (!taller_id) return NextResponse.json({ error: "taller_id requerido" }, { status: 422 });
-  if (!file) return NextResponse.json({ error: "Archivo requerido" }, { status: 422 });
+  if (!taller_id) return noStore(NextResponse.json({ error: "taller_id requerido" }, { status: 422 }));
+  if (!file) return noStore(NextResponse.json({ error: "Archivo requerido" }, { status: 422 }));
 
-  if (file.size === 0) return NextResponse.json({ error: "El archivo está vacío" }, { status: 422 });
+  if (file.size === 0) return noStore(NextResponse.json({ error: "El archivo está vacío" }, { status: 422 }));
   if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: `El archivo supera el tamaño máximo de 20 MB (${(file.size / 1024 / 1024).toFixed(1)} MB)` }, { status: 413 });
+    return noStore(NextResponse.json({ error: `El archivo supera el tamaño máximo de 20 MB (${(file.size / 1024 / 1024).toFixed(1)} MB)` }, { status: 413 }));
   }
   const mime = file.type || "application/octet-stream";
   if (!ALLOWED_MIME.has(mime)) {
-    return NextResponse.json({ error: `Tipo de archivo no permitido: ${mime}` }, { status: 415 });
+    return noStore(NextResponse.json({ error: `Tipo de archivo no permitido: ${mime}` }, { status: 415 }));
   }
 
   const sb = supabaseService();
 
   // Existe el taller?
   const { data: taller } = await sb.from("talleres").select("id").eq("id", taller_id).maybeSingle();
-  if (!taller) return NextResponse.json({ error: "El taller indicado no existe" }, { status: 422 });
+  if (!taller) return noStore(NextResponse.json({ error: "El taller indicado no existe" }, { status: 422 }));
 
   const nombre = nombreField || file.name;
   const descripcion = descripcionField || null;
@@ -79,7 +86,7 @@ export async function POST(req: Request) {
     bytes: file.size,
     storage_path: "__pending__",
   }).select("id").single();
-  if (ie) return NextResponse.json({ error: ie.message }, { status: 500 });
+  if (ie) return noStore(NextResponse.json({ error: ie.message }, { status: 500 }));
 
   const storagePath = `${taller_id}/${mat.id}-${nombreArchivo}`;
   const arrayBuf = await file.arrayBuffer();
@@ -89,9 +96,9 @@ export async function POST(req: Request) {
   if (upErr) {
     // Revertir el insert para no dejar filas huérfanas
     await sb.from("materiales").delete().eq("id", mat.id);
-    return NextResponse.json({ error: upErr.message }, { status: 500 });
+    return noStore(NextResponse.json({ error: upErr.message }, { status: 500 }));
   }
 
   await sb.from("materiales").update({ storage_path: storagePath }).eq("id", mat.id);
-  return NextResponse.json({ ok: true, id: mat.id, storage_path: storagePath });
+  return noStore(NextResponse.json({ ok: true, id: mat.id, storage_path: storagePath }));
 }

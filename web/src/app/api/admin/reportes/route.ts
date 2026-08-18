@@ -3,6 +3,13 @@ import { NextResponse } from "next/server";
 import { supabaseService } from "@/lib/supabase";
 import { getSession } from "@/lib/auth";
 
+function noStore(res: NextResponse) {
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.headers.set("Pragma", "no-cache");
+  res.headers.set("Expires", "0");
+  return res;
+}
+
 type Row = {
   dni: string;
   participante: string;
@@ -18,7 +25,7 @@ type Row = {
  *  La asistencia se toma por SESIÓN (no por taller); la columna "talleres"
  *  es informativa (lista de talleres de esa sesión, separados por coma). */
 export async function GET(req: Request) {
-  if (!(await getSession())) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!(await getSession())) return noStore(NextResponse.json({ error: "No autorizado" }, { status: 401 }));
   const url = new URL(req.url);
   const sesion_id = (url.searchParams.get("sesion_id") ?? "").trim();
 
@@ -30,7 +37,7 @@ export async function GET(req: Request) {
   if (sesion_id) sesionesQ = sesionesQ.eq("id", sesion_id);
   sesionesQ = sesionesQ.order("fecha").order("hora_inicio");
   const { data: sesiones, error: se } = await sesionesQ;
-  if (se) return NextResponse.json({ error: se.message }, { status: 500 });
+  if (se) return noStore(NextResponse.json({ error: se.message }, { status: 500 }));
 
   const sesionesMap = new Map<string, any>((sesiones ?? []).map((s: any) => [s.id, s]));
   const sesIds = (sesiones ?? []).map((s: any) => s.id);
@@ -45,7 +52,7 @@ export async function GET(req: Request) {
     asisQ = asisQ.in("sesion_id", sesIds);
   }
   const { data: asis, error: ae } = await asisQ;
-  if (ae) return NextResponse.json({ error: ae.message }, { status: 500 });
+  if (ae) return noStore(NextResponse.json({ error: ae.message }, { status: 500 }));
 
   const rows: Row[] = (asis ?? []).map((a: any) => {
     const s = sesionesMap.get(a.sesion_id);
@@ -65,5 +72,5 @@ export async function GET(req: Request) {
     };
   });
 
-  return NextResponse.json({ rows, total: rows.length });
+  return noStore(NextResponse.json({ rows, total: rows.length }));
 }

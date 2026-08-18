@@ -21,7 +21,7 @@ export default function EscanearPage() {
   useEffect(() => { sesionRef.current = sesionId; }, [sesionId]);
 
   useEffect(() => {
-    fetch("/api/sesiones")
+    fetch("/api/sesiones", { cache: "no-store" })
       .then(async (r) => {
         const d = await r.json();
         if (!r.ok) {

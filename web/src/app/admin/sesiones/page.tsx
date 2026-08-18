@@ -32,8 +32,8 @@ export default function AdminSesionesPage() {
   async function cargar() {
     setLoading(true);
     const [sr, tr] = await Promise.all([
-      fetch("/api/admin/sesiones").then((r) => r.json()),
-      fetch("/api/admin/talleres").then((r) => r.json()),
+      fetch("/api/admin/sesiones", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/admin/talleres", { cache: "no-store" }).then((r) => r.json()),
     ]);
     if (sr.error) { setErr(sr.error); setLoading(false); return; }
     if (tr.error) { setErr(tr.error); setLoading(false); return; }

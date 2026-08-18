@@ -4,11 +4,18 @@ import { supabaseService } from "@/lib/supabase";
 import { toCsv } from "@/lib/csv";
 import { getSession } from "@/lib/auth";
 
+function noStore(res: NextResponse) {
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.headers.set("Pragma", "no-cache");
+  res.headers.set("Expires", "0");
+  return res;
+}
+
 /** Exporta asistencia en CSV respetando el filtro de /api/admin/reportes
  *  (?sesion_id=). Sin filtros: todas las asistencias.
  *  La asistencia es por SESIÓN; la columna "talleres" es informativa. */
 export async function GET(req: Request) {
-  if (!await getSession()) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!await getSession()) return noStore(NextResponse.json({ error: "No autorizado" }, { status: 401 }));
   const sb = supabaseService();
 
   const url = new URL(req.url);
@@ -52,10 +59,10 @@ export async function GET(req: Request) {
   });
 
   const csv = toCsv(rows, ["dni", "participante", "sesion", "fecha", "hora", "talleres", "registrado_en"]);
-  return new NextResponse(csv, {
+  return noStore(new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="asistencia-${new Date().toISOString().slice(0, 10)}.csv"`,
     },
-  });
+  }));
 }

@@ -3,6 +3,13 @@ import { NextResponse } from "next/server";
 import { supabaseService } from "@/lib/supabase";
 import { generarCertificadoUNCPdf, generarCertificadoPMIPdf } from "@/lib/certificados-imagen";
 
+function noStore(res: NextResponse) {
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.headers.set("Pragma", "no-cache");
+  res.headers.set("Expires", "0");
+  return res;
+}
+
 export async function GET(req: Request, { params }: { params: { codigo: string } }) {
   const codigo = params.codigo.trim();
   const sb = supabaseService();
@@ -13,7 +20,7 @@ export async function GET(req: Request, { params }: { params: { codigo: string }
     .eq("codigo_verif", codigo)
     .maybeSingle() as any;
 
-  if (!cert) return NextResponse.json({ error: "Certificado no encontrado" }, { status: 404 });
+  if (!cert) return noStore(NextResponse.json({ error: "Certificado no encontrado" }, { status: 404 }));
 
   const url = new URL(req.url);
   const download = url.searchParams.get("download") === "1";
@@ -50,7 +57,7 @@ export async function GET(req: Request, { params }: { params: { codigo: string }
     });
   }
 
-  return NextResponse.json({
+  return noStore(NextResponse.json({
     codigo_verif: cert.codigo_verif,
     porcentaje: cert.porcentaje,
     generado_en: cert.generado_en,
@@ -58,5 +65,5 @@ export async function GET(req: Request, { params }: { params: { codigo: string }
     tiene_unc: !!cert.storage_path,
     tiene_pmi: !!cert.storage_path_pmi,
     certificado_id: cert.id,
-  });
+  }));
 }

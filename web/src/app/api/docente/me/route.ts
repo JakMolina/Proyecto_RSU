@@ -3,13 +3,20 @@ import { NextResponse } from "next/server";
 import { getDocente } from "@/lib/auth";
 import { supabaseService, supabaseConfigurado } from "@/lib/supabase";
 
+function noStore(res: NextResponse) {
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.headers.set("Pragma", "no-cache");
+  res.headers.set("Expires", "0");
+  return res;
+}
+
 /** Devuelve el panel completo del docente logueado: progreso, sesiones, certificado. */
 export async function GET() {
   if (!supabaseConfigurado()) {
-    return NextResponse.json({ error: "Supabase no configurado" }, { status: 500 });
+    return noStore(NextResponse.json({ error: "Supabase no configurado" }, { status: 500 }));
   }
   const doc = await getDocente();
-  if (!doc) return NextResponse.json({ error: "No has iniciado sesión" }, { status: 401 });
+  if (!doc) return noStore(NextResponse.json({ error: "No has iniciado sesión" }, { status: 401 }));
 
   const sb = supabaseService();
 
@@ -56,7 +63,7 @@ export async function GET() {
     registrado_en: (asistencias ?? []).find((a: any) => a.sesion_id === s.id)?.registrado_en ?? null,
   }));
 
-  return NextResponse.json({
+  return noStore(NextResponse.json({
     docente: {
       id: doc.id,
       dni: doc.dni,
@@ -79,5 +86,5 @@ export async function GET() {
         }
       : null,
     sesiones: sesionesDetalle,
-  });
+  }));
 }

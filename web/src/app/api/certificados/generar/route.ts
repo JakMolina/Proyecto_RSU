@@ -4,17 +4,24 @@ import { supabaseService } from "@/lib/supabase";
 import { generarAmbosCertificadosPdf } from "@/lib/certificados-imagen";
 import { getSession } from "@/lib/auth";
 
+function noStore(res: NextResponse) {
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.headers.set("Pragma", "no-cache");
+  res.headers.set("Expires", "0");
+  return res;
+}
+
 export async function POST(req: Request) {
-  if (!await getSession()) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!await getSession()) return noStore(NextResponse.json({ error: "No autorizado" }, { status: 401 }));
   const sb = supabaseService();
   const body = await req.json().catch(() => null);
-  if (!body) return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+  if (!body) return noStore(NextResponse.json({ error: "JSON inválido" }, { status: 400 }));
 
   const participanteId = String(body.participante_id ?? "").trim();
-  if (!participanteId) return NextResponse.json({ error: "participante_id requerido" }, { status: 422 });
+  if (!participanteId) return noStore(NextResponse.json({ error: "participante_id requerido" }, { status: 422 }));
 
   const { data: part } = await sb.from("participantes").select("id, dni, nombres, apellidos, nombre_completo, whatsapp").eq("id", participanteId).maybeSingle();
-  if (!part) return NextResponse.json({ error: "Participante no encontrado" }, { status: 404 });
+  if (!part) return noStore(NextResponse.json({ error: "Participante no encontrado" }, { status: 404 }));
 
   // Calcular porcentaje
   const { data: pctRow } = await sb.rpc("calcular_porcentaje_asistencia", { p_participante: part.id }).single();
@@ -24,7 +31,7 @@ export async function POST(req: Request) {
   const { data: param } = await sb.from("parametros").select("valor").eq("clave", "umbral_asistencia_min").single();
   const umbral = Number(param?.valor ?? 75);
   if (porcentaje < umbral) {
-    return NextResponse.json({ error: `No alcanza el umbral (${porcentaje}% < ${umbral}%)` }, { status: 409 });
+    return noStore(NextResponse.json({ error: `No alcanza el umbral (${porcentaje}% < ${umbral}%)` }, { status: 409 }));
   }
 
   // Fecha programa
@@ -36,7 +43,7 @@ export async function POST(req: Request) {
 
   if (!cert) {
     const { data: created, error } = await sb.from("certificados").insert({ participante_id: part.id, porcentaje }).select("*").single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return noStore(NextResponse.json({ error: error.message }, { status: 500 }));
     cert = created;
   } else {
     await sb.from("certificados").update({ porcentaje }).eq("id", cert.id);
@@ -50,12 +57,12 @@ export async function POST(req: Request) {
   // Subir certificado UNC
   const storagePathUnc = `${part.dni}/${cert.codigo_verif}-unc.pdf`;
   const { error: upErrUnc } = await sb.storage.from("certificados").upload(storagePathUnc, unc, { contentType: "application/pdf", upsert: true });
-  if (upErrUnc) return NextResponse.json({ error: upErrUnc.message }, { status: 500 });
+  if (upErrUnc) return noStore(NextResponse.json({ error: upErrUnc.message }, { status: 500 }));
 
   // Subir certificado PMI
   const storagePathPmi = `${part.dni}/${cert.codigo_verif}-pmi.pdf`;
   const { error: upErrPmi } = await sb.storage.from("certificados").upload(storagePathPmi, pmi, { contentType: "application/pdf", upsert: true });
-  if (upErrPmi) return NextResponse.json({ error: upErrPmi.message }, { status: 500 });
+  if (upErrPmi) return noStore(NextResponse.json({ error: upErrPmi.message }, { status: 500 }));
 
   // Guardar ambas rutas en el certificado
   await sb.from("certificados").update({ 
@@ -63,7 +70,7 @@ export async function POST(req: Request) {
     storage_path_pmi: storagePathPmi
   }).eq("id", cert.id);
 
-  return NextResponse.json({ 
+  return noStore(NextResponse.json({ 
     ok: true, 
     certificado_id: cert.id, 
     codigo_verif: cert.codigo_verif, 
@@ -71,5 +78,5 @@ export async function POST(req: Request) {
     storage_path_unc: storagePathUnc,
     storage_path_pmi: storagePathPmi,
     whatsapp: part.whatsapp 
-  });
+  }));
 }
