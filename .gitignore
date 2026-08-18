@@ -1,0 +1,48 @@
+# Dependencias
+node_modules/
+web/node_modules/
+*/node_modules/
+
+# Carpetas de compilación y Next.js
+dist/
+build/
+out/
+web/out/
+.next/
+web/.next/
+
+# Bases de datos locales y temporales
+dev-data/
+*.db
+*.db-wal
+*.db-shm
+
+# Entorno y secretos (NUNCA commitear)
+.env
+.env.local
+.env.*.local
+web/.env.local
+web/.env.*.local
+
+# Archivos de entorno y logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos del sistema operativo y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+next-env.d.ts.bak
+
+# Específicos del proyecto / opencode
+opencode.json
+ESTRUCTURA_PROYECTO.md
