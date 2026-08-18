@@ -26,6 +26,11 @@ export async function GET() {
     .select("id, nombre, fecha, hora_inicio, hora_fin")
     .order("fecha", { ascending: true })
     .order("hora_inicio", { ascending: true });
+    console.log("=== DIAGNOSTICO /api/sesiones ===");
+console.log("TOTAL SESIONES:", data?.length ?? 0);
+console.log("SESIONES:", JSON.stringify(data));
+console.log("SUPABASE URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+console.log("SERVICE ROLE EXISTE:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
   if (error) return noStore(NextResponse.json({ error: error.message }, { status: 500 }));
 
   const sesiones = (data ?? []).map((s: any) => ({
